@@ -49,6 +49,30 @@ def _synth(k, path):
         with wave.open(path, "wb") as w: w.setnchannels(ch); w.setsampwidth(2); w.setframerate(fr); w.writeframes(m.tobytes())
     except Exception: pass
     return pygame.mixer.Sound(buffer=m.tobytes())
+def _load(p):                                               # Sound(p); nếu SDL_mixer từ chối (24-bit, float, WAVE_EXTENSIBLE...) thì tự giải mã PCM
+    try: return pygame.mixer.Sound(p)
+    except Exception as e0: err = e0
+    try:
+        b = open(p, "rb").read(); fr, _, ch = pygame.mixer.get_init(); i, fmt, dat = 12, None, None
+        while i + 8 <= len(b):
+            cid, n = b[i:i + 4], int.from_bytes(b[i + 4:i + 8], "little"); body = b[i + 8:i + 8 + n]
+            if cid == b"fmt ": fmt = body
+            elif cid == b"data": dat = body; break
+            i += 8 + n + (n & 1)
+        tag, nc, sr = int.from_bytes(fmt[0:2], "little"), int.from_bytes(fmt[2:4], "little"), int.from_bytes(fmt[4:8], "little")
+        bits = int.from_bytes(fmt[14:16], "little")
+        if tag == 0xFFFE: tag = int.from_bytes(fmt[24:26], "little")
+        if tag == 1 and bits == 8: v = [(x - 128) << 8 for x in dat]
+        elif tag == 1 and bits == 16: v = array.array("h", dat[:len(dat) & -2]).tolist()
+        elif tag == 1 and bits == 24: v = [int.from_bytes(dat[k:k + 3], "little", signed=True) >> 8 for k in range(0, len(dat) - 2, 3)]
+        elif tag == 1 and bits == 32: v = [x >> 16 for x in array.array("i", dat[:len(dat) & -4])]
+        elif tag == 3 and bits == 32: v = [int(max(-1.0, min(1.0, x)) * 32767) for x in array.array("f", dat[:len(dat) & -4])]
+        else: raise ValueError("fmt %d/%dbit" % (tag, bits))
+        mono = [sum(v[k:k + nc]) // nc for k in range(0, len(v) - nc + 1, nc)]; L = len(mono)
+        out = array.array("h")
+        for k in range(int(L * fr / sr)): out.extend((mono[min(L - 1, int(k * sr / fr))],) * ch)
+        return pygame.mixer.Sound(buffer=out.tobytes())
+    except Exception: raise err
 _hp = [None]
 def vibe(v=0.7, ms=80):
     if _hp[0] is False or not ANDROID: return
@@ -101,7 +125,7 @@ def init_sfx():
         for k in KEYS:
             p = files.get(k)
             if p:
-                try: SFX[k] = pygame.mixer.Sound(p)
+                try: SFX[k] = _load(p)
                 except Exception as e: miss.append(k); bad[k] = str(e)[:20]
             else: miss.append(k)
         for k in [k for k in miss if k in SYN]:
