@@ -44,6 +44,7 @@ def _synth(k, path):
     m = array.array("h")
     for v in out: m.extend((int(max(-1.0, min(1.0, v)) * 30000),) * ch)
     try:
+        if os.path.exists(path): raise FileExistsError   # không bao giờ ghi đè file của người dùng
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with wave.open(path, "wb") as w: w.setnchannels(ch); w.setsampwidth(2); w.setframerate(fr); w.writeframes(m.tobytes())
     except Exception: pass
@@ -90,14 +91,18 @@ def init_sfx():
                 os.environ.pop("SDL_AUDIODRIVER", None); pygame.mixer.init(*MIX)
         here = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
         d = next((p for p in (os.path.join(here, "sfx"), os.path.join(os.getcwd(), "sfx")) if os.path.isdir(p)), None)
-        miss = []
+        files = {}
+        try:
+            for f in os.listdir(d):                                  # khớp tên không phân biệt hoa/thường
+                n, e = os.path.splitext(f)
+                if e.lower() == ".wav": files[n.lower()] = os.path.join(d, f)
+        except Exception: pass
+        miss, bad = [], {}
         for k in KEYS:
-            for ext in (".wav", ".WAV"):
-                p = os.path.join(d, k + ext) if d else ""
-                if os.path.exists(p):
-                    try: SFX[k] = pygame.mixer.Sound(p)
-                    except Exception: miss.append(k)
-                    break
+            p = files.get(k)
+            if p:
+                try: SFX[k] = pygame.mixer.Sound(p)
+                except Exception as e: miss.append(k); bad[k] = str(e)[:20]
             else: miss.append(k)
         for k in [k for k in miss if k in SYN]:
             try: SFX[k] = _synth(k, os.path.join(d or os.path.join(here, "sfx"), k + ".wav")); miss.remove(k)
@@ -107,8 +112,10 @@ def init_sfx():
         CHAN["n"] = pygame.mixer.Channel(1)
         CHAN["e1"] = pygame.mixer.Channel(2); CHAN["e2"] = pygame.mixer.Channel(3)
         init_eng()
-        if miss: print("[CANH BAO] thieu/hong:", miss, "| thu muc:", d)
-        SNDMSG[0] = ("Am thanh OK: Da load %d/%d file wav" % (len(SFX), len(KEYS))) if not miss else ("Am thanh thieu: " + ",".join(miss))[:44]
+        if miss or bad: print("[CANH BAO] thieu:", miss, "loi:", bad, "| thu muc:", d)
+        gone = [k for k in miss if k not in SFX]
+        pr = ["loi %s: %s" % kv for kv in bad.items()] + (["thieu " + ",".join(gone)] if gone else [])
+        SNDMSG[0] = ("Am thanh OK %d/%d" % (len(SFX), len(KEYS))) if not pr else "; ".join(pr)[:60]
     except Exception as e:
         SNDMSG[0] = "LOI AM THANH: " + str(e)[:44]
 def sfx(name, chan=None, loops=0):

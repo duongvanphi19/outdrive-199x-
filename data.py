@@ -1,4 +1,4 @@
-import os, math, random
+import os, sys, math, random
 from lang import T
 W, H = 320, 192
 HW, VS = W * 0.5, H * 0.5
@@ -208,7 +208,8 @@ def title_txt(p):
     i, nx = title_of(p); return T(TITLES[i][1]) + " · " + ("%d/%d" % (p, nx) if nx else "%d" % p)
 PAUSE = ("Tiếp tục", "Đua lại", "Về menu")
 QN, ON = ("Thấp", "Vừa", "Cao"), ("Tắt", "Bật")
-MENU = ("Đua tự do", "Cốt truyện", "Nhiều người", "Hồ sơ", "Cài đặt")
+MENU = ("Đua ngay", "Nhiều người", "Hồ sơ", "Cài đặt") + (() if sys.platform == "emscripten" else ("Thoát",))
+MODES = (("Đua tự do", "Tự chọn xe, đường, độ khó"), ("Cốt truyện", "Giải đấu nhiều chương, mở khóa xe & đường"))
 NAMES = ("Gia Huy", "Mai Linh", "Quốc Bảo", "Ngọc Anh", "Tuấn Kiệt", "Bích Thảo", "Hải Đăng", "Phương Vy", "Minh Khôi")
 CONF = ((255, 80, 80), (80, 200, 255), (120, 255, 120), (255, 230, 90))
 RK = ((255, 215, 0), (215, 220, 230), (215, 140, 70))

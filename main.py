@@ -25,7 +25,7 @@ from data import *
 import sprites as S
 from sprites import *
 from sprites import _font, _sysfont, _sc, _surf, _fin, txt, _glow
-from sfx import init_sfx, sfx, sfx_stop, MIX, set_vol, play_bgm, stop_bgm, engine
+from sfx import init_sfx, sfx, sfx_stop, MIX, set_vol, play_bgm, stop_bgm, engine, SNDMSG
 from ui import *
 from ui import _pn, _rc
 from lang import T, set_lang
@@ -298,7 +298,7 @@ def render(scr, D, px, cars, dr, drmax, cols, ch=CAMH):
     for p in pend: blit(p[1], p[2])
 DIF = [1.0]
 render.nv = 0
-MENU_ST = frozenset(("menu","title","set", "cred", "how", "story", "brief", "car", "track", "dif", "name", "gift", "vs", "nethome", "netjoin", "netip", "netlobby", "prof",))
+MENU_ST = frozenset(("menu","pick","title","set", "cred", "how", "story", "brief", "car", "track", "dif", "name", "gift", "vs", "nethome", "netjoin", "netip", "netlobby", "prof",))
 SAVE = os.path.join(HERE, "racer_save.json")
 if WEB: from platform import window as _win
 def load_save():
@@ -411,7 +411,7 @@ async def main():
     for k_, v_, m_ in (("q", 1, 3), ("vol", 1, 4), ("dif", 1, 3), ("lang", 1, 2)):
         try: cfg[k_] = int(cfg.get(k_, v_)) % m_
         except Exception: cfg[k_] = v_
-    drmax = QDR[cfg["q"]]; msel = ssel = 0
+    drmax = QDR[cfg["q"]]; msel = ssel = ksel = 0
     set_lang(cfg["lang"]); pad_caps(pad, pfont)
     set_vol(cfg["vol"])
     try: car_i = int(save.get("car", 0)) % len(PCAR_DEF)
@@ -520,7 +520,7 @@ async def main():
             sks.extend([[x, y, d * _r(20, 170), _r(-190, -40), 0.0] for _ in range(min(n, 48 - len(sks)))])
     def puff(x, y, col, up=1.0):
         if cfg["q"] and len(parts) < 60: parts.append([x, y, rnd.uniform(-14, 14) - slip * 40, rnd.uniform(-22, -6) * up, 0.0, col])
-    hoff_top = hoff_bot = 0 ;dbg = False; nlift = 0.0
+    hoff_top = hoff_bot = 0 ;dbg = False; nlift = 0.0; vtap = [0, 0.0]
     pf = 0.0
     pnit=0.0
     pros = 0
@@ -534,24 +534,31 @@ async def main():
         nonlocal st
         if "A" in pressed: st = "menu"
     def u_menu():
-        nonlocal howto_next, mode, msel, myip, nsel, st
+        nonlocal howto_next, mode, msel, myip, nsel, st, run
         setlock(None)
         msel = (msel + ("down" in pressed) - ("up" in pressed)) % len(MENU)
         if "C" in pressed: st = "prof"
         if "A" in pressed:
-            if msel < 2:
-                if msel == 0: mode = "free"
-                nxt = "car" if msel == 0 else "story"
-                if save.get("seen"): st = nxt
-                else: st, howto_next = "how", nxt
-            elif msel == 2: 
+            m = MENU[msel]
+            if m == "Đua ngay": st = "pick"
+            elif m == "Nhiều người":
                 if netplay is None: tset("Chỉ có ở bản tải về" if WEB else "Thiếu file netplay.py")
-                #else: mode = "net"; st = "nethome"; nsel = 0; myip = netplay.Net.local_ip()
                 else:
                     try: myip = netplay.Net.local_ip(); mode = "net"; st = "nethome"; nsel = 0
-                    except Exception as e: tset("Mạng: " + str(e)[:36])                         
-            elif msel == 3: st = "prof"
-            else: st = "set"
+                    except Exception as e: tset("Mạng: " + str(e)[:36])
+            elif m == "Hồ sơ": st = "prof"
+            elif m == "Cài đặt": st = "set"
+            else: run = False
+    def u_pick():
+        nonlocal howto_next, ksel, mode, st
+        setlock(None)
+        ksel = (ksel + ("down" in pressed) - ("up" in pressed)) % len(MODES)
+        if "A" in pressed:
+            if ksel == 0: mode = "free"
+            nxt = ("car", "story")[ksel]
+            if save.get("seen"): st = nxt
+            else: st, howto_next = "how", nxt
+        elif "B" in pressed: st = "menu"
     def u_set():
         nonlocal cols, d, dr, drmax, howto_next, ssel, st
         ssel = (ssel + ("down" in pressed) - ("up" in pressed)) % 5
@@ -727,7 +734,7 @@ async def main():
             chap = csel; mi = mp if chap == prog else 2
             if not unlk(car_i): car_i = 0
             st = "brief"
-        elif "B" in pressed: st = "menu"
+        elif "B" in pressed: st = "pick"
     def u_brief():
         nonlocal car_i, fc, mode, st, trk_i, tt, vs_t
         if not hasattr(main, "dlg_step"): main.dlg_step = 0
@@ -745,7 +752,7 @@ async def main():
         if "left" in pressed: car_i = (car_i - 1) % len(PCAR_DEF); draw_car_menu.dir = -1
         elif "right" in pressed: car_i = (car_i + 1) % len(PCAR_DEF); draw_car_menu.dir = 1
         elif "A" in pressed and unlk(car_i): st = "track";sfx("rev")
-        elif "B" in pressed: st = "menu"
+        elif "B" in pressed: st = "pick"
     def u_track():
         nonlocal D, car_i, cols, st, trk_i
         chg = ("right" in pressed) - ("left" in pressed); dc = ("down" in pressed) - ("up" in pressed)
@@ -758,7 +765,7 @@ async def main():
                 else: st = "flyin"
             else: tset(T("Thắng chương %d để mở đường") % TNEED[trk_i])
         elif "B" in pressed: st = "car"
-    UPD = {"title": u_title, "menu": u_menu, "set": u_set, "dif": u_dif, "cred": u_cred, "prof": u_prof, "how": u_how, "reward": u_reward, "vs": u_vs, "gift": u_gift, "podium": u_podium, "end": u_end, "name": u_name, "nethome": u_nethome, "netjoin": u_netjoin, "netip": u_netip, "netlobby": u_netlobby, "story": u_story, "brief": u_brief, "car": u_car, "track": u_track}
+    UPD = {"title": u_title, "menu": u_menu, "pick": u_pick, "set": u_set, "dif": u_dif, "cred": u_cred, "prof": u_prof, "how": u_how, "reward": u_reward, "vs": u_vs, "gift": u_gift, "podium": u_podium, "end": u_end, "name": u_name, "nethome": u_nethome, "netjoin": u_netjoin, "netip": u_netip, "netlobby": u_netlobby, "story": u_story, "brief": u_brief, "car": u_car, "track": u_track}
     def d_brief():
         nonlocal fc
         draw_brief(scr, mc(chap, mi), chap, car_i, tt, getattr(main, "dlg_step", 0))
@@ -769,6 +776,7 @@ async def main():
     DRAW = {
         "title": lambda: draw_title(scr, tt),
         "menu": lambda: draw_menu(scr, msel, tt),
+        "pick": lambda: draw_mode(scr, ksel, pts, prog),
         "prof": lambda: draw_prof(scr, save, pname, pts, sum(stg.values()), prog, int(ptime), tt, not shot, nc + egg),
         "name": lambda: draw_name(scr, nch, ncur, tt),
         "set": lambda: draw_settings(scr, ssel, cfg),
@@ -817,7 +825,9 @@ async def main():
             elif st == "menu" and (et == pygame.FINGERDOWN or (et == pygame.MOUSEBUTTONDOWN and e.button == 1 and not (pad._fs and getattr(e, "touch", False)))):
                 if et == pygame.FINGERDOWN: ww, wh = pygame.display.get_surface().get_size(); tx, ty = pad._cv(e.x * ww, e.y * wh)
                 else: tx, ty = pad._cv(*e.pos)
-                if VER_HIT[0] <= tx < VER_HIT[2] and VER_HIT[1] <= ty < VER_HIT[3]: dbg = not dbg; tset("Debug " + ("BẬT" if dbg else "TẮT"))
+                if VER_HIT[0] <= tx < VER_HIT[2] and VER_HIT[1] <= ty < VER_HIT[3]:
+                    vtap[0] = vtap[0] + 1 if tf - vtap[1] < 1.0 else 1; vtap[1] = tf
+                    if vtap[0] >= 3: vtap[0] = 0; dbg = not dbg; tset("Debug " + ("BẬT" if dbg else "TẮT"))
             elif st in ("count", "race") and not paused and (et == pygame.FINGERDOWN or (
                     et == pygame.MOUSEBUTTONDOWN and e.button == 1 and not (pad._fs and getattr(e, "touch", False)))):
                 if et == pygame.FINGERDOWN: ww, wh = pygame.display.get_surface().get_size(); tx, ty = pad._cv(e.x * ww, e.y * wh)
@@ -1390,20 +1400,15 @@ async def main():
         if dbg:
             if not hasattr(main, "dbg_surf") or tf - getattr(main, "dbg_t", 0) > 0.25:
                 main.dbg_t = tf
-                ds = pygame.Surface((206, 6 * 12 + 4), pygame.SRCALPHA)
-                ds.blit(_pn(206, 6 * 12 + 4, 200), (0, 0))
+                ds = pygame.Surface((176, 2 * 12 + 4), pygame.SRCALPHA)
+                ds.blit(_pn(206, 3 * 12 + 4, 200), (0, 0))
                 G, Y, R, Wh = (120, 255, 120), (255, 220, 70), (255, 90, 80), (255, 255, 255)
                 def lv(v, a, b): return G if v < a else (Y if v < b else R)
-                f = clock.get_fps(); pm = int(ptime); nprt = len(parts) + len(skid) + len(sks)
+                f = clock.get_fps(); sm = sum(tm)
                 rows = (
-                    (("FPS %d" % f, lv(-f, -55, -40)), ("worst %.0f" % ft_max, lv(ft_max, 22, 40)), ("dr %d/%d" % (dr, drmax), G if dr >= drmax else Y)),
-                    (("upd %.1f" % tm[0], lv(tm[0], 3, 6)), ("road %.1f" % tm[1], lv(tm[1], 8, 12)),
-                    ("hud %.1f" % tm[2], lv(tm[2], 3, 5)), ("pres %.1f" % tm[3], lv(tm[3], 4, 7))),
-                    (("vis %d" % getattr(render, "nv", -1), Wh), ("seg %d/%d" % (ps, N), Wh), ("sum %.1fms" % sum(tm), lv(sum(tm), 15, 20))),
-                    (("spr %d" % len(_sc), lv(len(_sc), 500, 1000)), ("txt %d" % len(S._tc), lv(len(S._tc), 350, 480)), ("dg %d" % len(S._dg), Wh),("shd %d" % len(S._sh), lv(len(S._sh), 40, 100))),
-                    (("part %d" % nprt, lv(nprt, 30, 50)), (st, Wh), ("spd %d" % spd, Wh)),
-                    (("play %d:%02d:%02d" % (pm // 3600, pm // 60 % 60, pm % 60), C_DIM),
-                     ("RAM %d MB" % ram, lv(ram, 150, 250))),
+                    (("FPS %d" % f, lv(-f, -55, -40)), ("worst %.0fms" % ft_max, lv(ft_max, 22, 40)), ("dr %d/%d" % (dr, drmax), G if dr >= drmax else Y)),
+                    (("frame %.1fms" % sm, lv(sm, 15, 20)), ("RAM %dMB" % ram, lv(ram, 150, 250))),
+
                 )
                 for i, r in enumerate(rows):
                     x = 3

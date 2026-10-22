@@ -357,6 +357,13 @@ def draw_menu(scr, sel, tt):
             pygame.draw.rect(scr, (240, 240, 240) if (i + r) & 1 else (30, 30, 36), (60 + i * 8, 62 + r * 4, 8, 4))
     for i, m in enumerate(MENU): row(scr, 74 + i * 17, m, i == sel, x=60, w=200)
     draw_ver(scr)
+def draw_mode(scr, sel, pts, prog):
+    panel(scr, 10, 6, 300, 180, "CHẾ ĐỘ")
+    vals = (T(TITLES[title_of(pts)[0]][1]), "%d/%d" % (min(prog, len(STORY)), len(STORY)))
+    for i, (lb, ds) in enumerate(MODES):
+        y = 48 + i * 40
+        row(scr, y, lb, i == sel, val=vals[i]); scr.blit(txt(ds, C_DIM), (46, y + 15))
+    hints(scr, 168, (("^ v", "Chọn"), ("A", "OK"), ("B", "Quay lại")))
 def _stamp():
     s = _lk.get(0)
     if s is None:
@@ -489,11 +496,12 @@ def draw_settings(scr, sel, cfg):
 def draw_diff(scr, sel, tt, ti):
     panel(scr, 10, 6, 300, 180, "ĐỘ KHÓ")
     ctext(scr, TRACKS[ti]["name"], 28, C_DIM)
-    INF = (("Dễ", "Đối thủ chậm", 0), ("Thường", "Cân bằng", 1), ("Khó", "Đối thủ nhanh, ráo riết", 2))
-    for i, (lb, ds, k) in enumerate(INF):
+    INF = (("Dễ", "Đối thủ chậm", 0, (120, 255, 120)), ("Thường", "Cân bằng", 1, (255, 220, 70)), ("Khó", "Đối thủ nhanh, ráo riết", 2, (255, 90, 80)))
+    for i, (lb, ds, k, c) in enumerate(INF):
         y = 48 + i * 30
-        row(scr, y, lb, i == sel, val="x%g %s" % (PTS_DIF[k], T("điểm")))
+        row(scr, y, lb, i == sel, c if i == sel else (255, 255, 255), val="x%g %s" % (PTS_DIF[k], T("điểm")))
         scr.blit(txt(ds, C_DIM), (46, y + 15))
+        for p in range(3): pygame.draw.rect(scr, c if p <= k else (44, 42, 70), (254 + p * 12, y + 20, 9, 5))
     hints(scr, 168, (("^ v", "Chọn"), ("A", "Đua"), ("B", "Quay lại")))
 def draw_netmenu(scr, sel, name, ip):
     panel(scr, 10, 6, 300, 180, "NHIỀU NGƯỜI · LAN")

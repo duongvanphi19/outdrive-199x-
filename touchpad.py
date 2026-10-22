@@ -38,7 +38,7 @@ class TouchPad:
             s.vo, s.view, s.kr, s.cl, s.pcs = (SM, 0), s.canvas.subsurface((SM, 0, w, h + s.ph)), 21, s.cell, [(SM, h, w, s.ph)]
             s.dc = (SM + s.dp[0], h + s.dp[1]); s.bp = {b[0]: (SM + b[2], h + b[3]) for b in s.btn}; return
         s.vo, s.view, s.cl = (SM - sd, 0), s.canvas.subsurface((SM - sd, 0, w + 2 * sd, h)), min(s.cell, (sd - 8) // 3)
-        s.pcs = [(SM - sd, 0, sd, h), (SM + w, 0, sd, h)]; s.dc = (SM - sd // 2, h // 2 + 48); s.bp = {}
+        s.pcs = [(SM - sd, 0, sd, h), (SM + w, 0, sd, h)]; s.dc = (SM - sd // 2, h // 2 + 28); s.bp = {}
         if not s.btn: return
         cx = SM + w + sd // 2
         cy = h // 2

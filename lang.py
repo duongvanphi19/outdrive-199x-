@@ -149,3 +149,6 @@ EN = {"Giờ đua": "Race time", "Cốt truyện": "Story", "Thắng": "Win", "�
     "ÂM THANH": "SOUND", "CÔNG NGHỆ": "TECHNOLOGY", "LIÊN HỆ": "CONTACT", "CẢM ƠN": "THANKS",
     "Bạn đã đồng hành cùng OUTDRIVE 199X!": "Thanks for racing with OUTDRIVE 199X!",
 }
+EN.update({"Đua ngay": "Race Now", "Thoát": "Quit", "CHẾ ĐỘ": "GAME MODE",
+    "Tự chọn xe, đường, độ khó": "Pick your car, track, difficulty",
+    "Giải đấu nhiều chương, mở khóa xe & đường": "Multi-chapter tournament, unlock cars & tracks"})
