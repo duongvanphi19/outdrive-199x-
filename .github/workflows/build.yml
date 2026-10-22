@@ -16,7 +16,7 @@ jobs:
         run: |
           pip install pygame pyinstaller pillow
           python -c "from PIL import Image; Image.open('icon.png').save('icon.ico')"
-          pyinstaller --noconsole --name Outdrive199X --icon icon.ico --add-data "sfx;sfx" --add-data "*.ttf;." --add-data "*.png;." main.py
+          pyinstaller --noconsole --name Outdrive199X --icon icon.ico --add-data "sfx;sfx" --add-data "*.png;." main.py
       - uses: actions/upload-artifact@v4
         with:
           name: Outdrive_199X_EXE
@@ -27,13 +27,27 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with: { python-version: '3.12' }
-      - run: |
+      - name: Gom đúng file cần cho web
+        run: |
+          mkdir -p webapp/sfx
+          cp main.py data.py lang.py sprites.py ui.py touchpad.py sfx.py webapp/
+          cp icon.png webapp/ 2>/dev/null || true
+          cp sfx/*.wav sfx/*.ogg webapp/sfx/
+          ls -R webapp
+      - name: Build web
+        run: |
           pip install pygbag
-          python -m pygbag --build --archive .
+          python -m pygbag --build --archive --no_opt webapp 2>&1 | tee web.log
+          exit ${PIPESTATUS[0]}
       - uses: actions/upload-artifact@v4
         with:
           name: Outdrive_199X_WEB
-          path: build/web.zip
+          path: webapp/build/web.zip
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: web-log
+          path: web.log
   build:
     runs-on: ubuntu-22.04
     steps:
