@@ -1,4 +1,6 @@
 import os, sys, gc, json, math, random, time, asyncio
+os.environ["SDL_IOS_ORIENTATIONS"] = "LandscapeLeft LandscapeRight"   # khoá ngang, chặn SDL tự xoay dọc
+os.environ["SDL_ANDROID_TRAP_BACK_BUTTON"] = "1"
 WEB = sys.platform == "emscripten"
 try: HERE = os.path.dirname(os.path.abspath(__file__))
 except NameError: HERE = os.getcwd()
@@ -326,7 +328,8 @@ KEYS = {pygame.K_LEFT: "left", pygame.K_a: "left", pygame.K_RIGHT: "right", pyga
         pygame.K_UP: "up", pygame.K_w: "up", pygame.K_DOWN: "down", pygame.K_s: "down",
         pygame.K_z: "A", pygame.K_SPACE: "A", pygame.K_RETURN: "A", pygame.K_x: "B",
         pygame.K_c: "C", pygame.K_LSHIFT: "C"}
-BACKK = (pygame.K_ESCAPE, getattr(pygame, "K_AC_BACK", pygame.K_ESCAPE))
+#BACKK = (pygame.K_ESCAPE, getattr(pygame, "K_AC_BACK", pygame.K_ESCAPE))
+BACKK = (pygame.K_ESCAPE, getattr(pygame, "K_AC_BACK", 1073742094))
 AWAY = tuple(getattr(pygame, n) for n in ("WINDOWFOCUSLOST", "WINDOWMINIMIZED", "WINDOWHIDDEN",
                                          "APP_WILLENTERBACKGROUND", "APP_DIDENTERBACKGROUND") if hasattr(pygame, n))
 def net_cars(rs):
@@ -405,7 +408,7 @@ async def main():
     for k_ in ("rec", "set", "mas"):
         if not isinstance(save.get(k_), dict): save[k_] = {}
     recs, cfg = save["rec"], save["set"]
-    for k_, v_, m_ in (("q", 2, 3), ("vol", 3, 4), ("dif", 1, 3), ("lang", 0, 2)):
+    for k_, v_, m_ in (("q", 1, 3), ("vol", 1, 4), ("dif", 1, 3), ("lang", 1, 2)):
         try: cfg[k_] = int(cfg.get(k_, v_)) % m_
         except Exception: cfg[k_] = v_
     drmax = QDR[cfg["q"]]; msel = ssel = 0
@@ -541,9 +544,12 @@ async def main():
                 nxt = "car" if msel == 0 else "story"
                 if save.get("seen"): st = nxt
                 else: st, howto_next = "how", nxt
-            elif msel == 2:
+            elif msel == 2: 
                 if netplay is None: tset("Chỉ có ở bản tải về" if WEB else "Thiếu file netplay.py")
-                else: mode = "net"; st = "nethome"; nsel = 0; myip = netplay.Net.local_ip()
+                #else: mode = "net"; st = "nethome"; nsel = 0; myip = netplay.Net.local_ip()
+                else:
+                    try: myip = netplay.Net.local_ip(); mode = "net"; st = "nethome"; nsel = 0
+                    except Exception as e: tset("Mạng: " + str(e)[:36])                         
             elif msel == 3: st = "prof"
             else: st = "set"
     def u_set():

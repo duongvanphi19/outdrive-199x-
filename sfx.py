@@ -141,7 +141,8 @@ def play_bgm(name):
     p = os.path.join(d, name + ".ogg")
     if os.path.exists(p):
         try: pygame.mixer.music.load(p); pygame.mixer.music.play(loops=-1)
-        except Exception: pass
+        except Exception as e: SNDMSG[0] = "BGM: " + str(e)[:40]
+    else: SNDMSG[0] = "Thieu " + name + ".ogg"
 def stop_bgm():
     _cur[0] = None
     if pygame.mixer.get_init(): pygame.mixer.music.fadeout(1000)

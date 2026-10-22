@@ -6,9 +6,10 @@ try: HERE = os.path.dirname(os.path.abspath(__file__))
 except NameError: HERE = os.getcwd()
 FONT = BIG = MED = None
 FONT_FILE = os.path.join(HERE, "SVN-Retron 2000.ttf")
+AF = ("/system/fonts/Roboto-Regular.ttf", "/system/fonts/NotoSans-Regular.ttf", "/system/fonts/DroidSans.ttf")
 def _sysfont(sz):
-    try: return pygame.font.SysFont("arial", sz)
-    except Exception: return pygame.font.Font(None, sz + 4)
+    p = next((p for p in AF if os.path.exists(p)), None)
+    return pygame.font.Font(p, sz if p else sz + 4)
 _dg = {}
 def num(s, col=(255, 255, 255), big=0):
     out = []; w = 0

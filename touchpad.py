@@ -1,4 +1,4 @@
-import pygame, math
+import pygame, math, os
 DIRS = (("down", 0, 1), ("up", 0, -1), ("left", -1, 0), ("right", 1, 0))
 BTN = (("X", "", 262, 24), ("Y", "", 230, 56), ("A", "", 304, 56), ("B", "", 272, 88))
 SM, SIDE, RATIO = 150, 100, 1.7
@@ -90,8 +90,10 @@ class TouchPad:
     def _mode(s):
         s.land, s.side = s._want(); s.ptr.clear(); s._dst = None
         cw, ch = (s.w + 2 * s.side, s.h) if s.land else (s.w, s.h + (s.ph if s.on else 0))
-        pygame.display.set_mode((cw, ch), pygame.SCALED | pygame.RESIZABLE)
-        if s.canvas: s._build(); s._layout()
+        FS = pygame.FULLSCREEN if "ANDROID_ARGUMENT" in os.environ else 0     # p4a có biến này, Pydroid/PC thì không
+        pygame.display.set_mode((cw, ch), pygame.SCALED | (FS or pygame.RESIZABLE))
+        pygame.key.stop_text_input()                      # Android: tắt bàn phím ảo tự bật
+        if s.canvas: s._build(); s._layout()    
     def show(s, v):
         if v != s.on: s.on = v; s._mode()
     def _cc(s, x, y): sc, ox, oy = s.vp; return (x - ox) / sc + s.vo[0], (y - oy) / sc + s.vo[1]
