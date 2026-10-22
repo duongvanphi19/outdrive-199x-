@@ -21,6 +21,7 @@ jobs:
         with:
           name: Outdrive_199X_EXE
           path: dist/Outdrive199X
+
   web:
     runs-on: ubuntu-22.04
     steps:
@@ -29,10 +30,17 @@ jobs:
         with: { python-version: '3.12' }
       - name: Gom đúng file cần cho web
         run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
           mkdir -p webapp/sfx
           cp main.py data.py lang.py sprites.py ui.py touchpad.py sfx.py webapp/
           cp icon.png webapp/ 2>/dev/null || true
-          cp sfx/*.wav sfx/*.ogg webapp/sfx/
+          cp sfx/*.ogg webapp/sfx/
+          for f in sfx/*.wav; do
+            ffmpeg -loglevel error -y -i "$f" -c:a libvorbis -q:a 3 "webapp/sfx/$(basename "${f%.wav}").ogg"
+          done
+          # chỉ bản web: đổi đuôi .wav -> .ogg trong code
+          sed -i 's/\.wav/.ogg/g' webapp/*.py
+          grep -n "\.ogg" webapp/*.py | head
           ls -R webapp
       - name: Build web
         run: |
@@ -48,6 +56,7 @@ jobs:
         with:
           name: web-log
           path: web.log
+
   build:
     runs-on: ubuntu-22.04
     steps:
