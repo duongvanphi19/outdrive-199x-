@@ -30,6 +30,7 @@ from ui import *
 from ui import _pn, _rc
 from lang import T, set_lang
 MM_CACHE = {}
+ROT = {}
 CURVE = Y = BAND = SPR = MMP = TRK = None
 PADS, RAMPS, CUTS, TUN, BRG = set(), {}, {}, set(), set()
 MARKS = {}
@@ -299,13 +300,24 @@ def render(scr, D, px, cars, dr, drmax, cols, ch=CAMH):
 DIF = [1.0]
 render.nv = 0
 MENU_ST = frozenset(("menu","pick","title","set", "cred", "how", "story", "brief", "car", "track", "dif", "name", "gift", "vs", "nethome", "netjoin", "netip", "netlobby", "prof",))
-SAVE = os.path.join(HERE, "racer_save.json")
+def _wdir():                                                # nơi ghi save/ảnh: exe -> cạnh file exe; p4a -> files/ (sống sót khi cập nhật apk)
+    fr = getattr(sys, "frozen", False); c = [os.path.dirname(sys.executable)] if fr else []
+    if "ANDROID_ARGUMENT" in os.environ and os.environ.get("ANDROID_PRIVATE"): c.append(os.environ["ANDROID_PRIVATE"])
+    if not fr: c.append(HERE)
+    c.append(os.path.expanduser("~"))
+    return next((d for d in c if os.access(d, os.W_OK)), HERE)
+WD = HERE if WEB else _wdir()
+SAVE = os.path.join(WD, "racer_save.json")
 if WEB: from platform import window as _win
 def load_save():
     try:
         if WEB: d = json.loads(_win.localStorage.getItem("outdrive_save") or "{}")
         else:
-            with open(SAVE, "r", encoding="utf-8") as f: d = json.load(f)
+            for p in (SAVE, os.path.join(HERE, "racer_save.json")):   # path cũ làm dự phòng: giữ save của bản trước
+                if os.path.exists(p):
+                    with open(p, "r", encoding="utf-8") as f: d = json.load(f)
+                    break
+            else: d = {}
         if isinstance(d, dict): return d
     except Exception:
         pass
@@ -321,6 +333,31 @@ def write_save(d):
         os.replace(SAVE + ".tmp", SAVE)
     except Exception:
         pass
+ANDROID = "ANDROID_ARGUMENT" in os.environ or "ANDROID_ROOT" in os.environ
+def to_gallery(fn):                                         # Android: đưa ảnh ra nơi người dùng thấy được; trả về chuỗi vị trí hoặc None
+    nm = os.path.basename(fn)
+    try:                                                    # MediaStore: hiện trong Thư viện, không cần cấp quyền (Android 10+)
+        from jnius import autoclass
+        cr = autoclass("org.libsdl.app.SDLActivity").getContext().getContentResolver()
+        CV = autoclass("android.content.ContentValues"); uri = autoclass("android.provider.MediaStore$Images$Media").EXTERNAL_CONTENT_URI
+        for rp in ("Pictures/Outdrive", None):              # Android <10 không có cột relative_path
+            try:
+                v = CV(); v.put("_display_name", nm); v.put("mime_type", "image/png")
+                if rp: v.put("relative_path", rp)
+                u = cr.insert(uri, v)
+                if u is not None: break
+            except Exception: u = None
+        if u is None: raise RuntimeError("insert")
+        o = cr.openOutputStream(u)
+        with open(fn, "rb") as f: o.write(bytearray(f.read()))
+        o.close(); os.remove(fn)
+        return "Pictures/Outdrive/" + nm
+    except Exception: pass
+    try:                                                    # Pydroid & máy cũ: thư mục Pictures công khai
+        import shutil
+        d = "/storage/emulated/0/Pictures/Outdrive"; os.makedirs(d, exist_ok=True); shutil.copy(fn, d)
+        return "Pictures/Outdrive/" + nm
+    except Exception: return None
 def pad_caps(pad, font):
     pad.btn = tuple((n, "|".join(T(p) for p in ("Trôi" if n == "A" else c).split("|")), x, y) for n, c, x, y in BUTTONS)
     pad._art(font)
@@ -373,7 +410,8 @@ async def main():
     pygame.mixer.pre_init(*MIX)
     pygame.init()
     pygame.event.set_allowed(None) # Chặn toàn bộ mọi sự kiện
-    pygame.event.set_allowed([pygame.QUIT,pygame.KEYDOWN, pygame.KEYUP, pygame.FINGERDOWN, pygame.FINGERUP])
+    pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.KEYUP, pygame.FINGERDOWN, pygame.FINGERMOTION, pygame.FINGERUP,
+                              pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION, *AWAY])
 
     touch = "ANDROID_ROOT" in os.environ or "ANDROID_DATA" in os.environ
     pfont = _sysfont(12)
@@ -402,7 +440,7 @@ async def main():
     await draw_loading(1)
     init_sfx()
     await draw_loading(2)
-    rec = Recorder(pad.screen, fps=30, secs=20, scale=2, mode="long", max_mb=40, cv=pad._cv, font=S.FONT, folder=HERE)
+    rec = Recorder(pad.screen, fps=30, secs=20, scale=2, mode="long", max_mb=40, cv=pad._cv, font=S.FONT, folder=WD)
     gc.disable()
     save = load_save()
     for k_ in ("rec", "set", "mas"):
@@ -816,6 +854,9 @@ async def main():
             elif et == pygame.KEYDOWN:
                 if e.key in BACKK: back = True
                 elif e.key == pygame.K_F3: dbg = not dbg
+                elif e.key == pygame.K_F11:
+                    try: pygame.display.toggle_fullscreen()
+                    except Exception: pass
                 elif e.key == pygame.K_p: pk = True
                 n = KEYS.get(e.key)
                 if n: kb.add(n); kbp.add(n)
@@ -1217,7 +1258,11 @@ async def main():
             if st in ("race", "done") and spd > MAXSPD * 0.2:
                 car_tilt = -slip * 6.0 * (spd / MAXSPD)
                 if abs(car_tilt) > 2.0:
-                    car_sprite = pygame.transform.rotate(car_sprite, car_tilt)
+                    kr_ = (car_i, yi, int(round(car_tilt)))
+                    if kr_ not in ROT:
+                        if len(ROT) > 300: ROT.clear()
+                        ROT[kr_] = pygame.transform.rotate(car_sprite, kr_[2])
+                    car_sprite = ROT[kr_]
             scr.blit(s_, (sx + 30 + int(slip * 3 + SUNX * (6 + 10 * u)) - (s_.get_width() >> 1), gy + 2 - (s_.get_height() >> 1)))
             scr.blit(car_sprite, (sx + 30 - (car_sprite.get_width() >> 1), sy + 38 - car_sprite.get_height()))
         if boost or pbt > 0.15:
@@ -1390,11 +1435,12 @@ async def main():
                 if bn_t == 0.0: sfx("star")
                 banner_rank(scr, title_of(pts)[0], bn_t); bn_t += dt
         if shot:
-            shot = False; sd = os.path.join(HERE, "shots"); fn = os.path.join(sd, "card_%s.png" % time.strftime("%Y%m%d_%H%M%S"))
+            shot = False; sd = os.path.join(WD, "shots"); fn = os.path.join(sd, "card_%s.png" % time.strftime("%Y%m%d_%H%M%S"))
             try:
                 os.makedirs(sd, exist_ok=True)
                 pygame.image.save(pygame.transform.scale(scr, (W * 5, H * 5)), fn)
-                tset(T("Đã lưu: ") + "shots/" + os.path.basename(fn));
+                where = to_gallery(fn) if ANDROID else None
+                tset(T("Đã lưu: ") + (where or "shots/" + os.path.basename(fn)))
             except Exception as ex: tset(T("Lỗi lưu: ") + type(ex).__name__)
         if dbg and tf - ram_t > 1.0: ram_t = tf; ram = ram_mb()
         if dbg:

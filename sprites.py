@@ -5,8 +5,9 @@ from lang import T
 try: HERE = os.path.dirname(os.path.abspath(__file__))
 except NameError: HERE = os.getcwd()
 FONT = BIG = MED = None
-FONT_FILE = os.path.join(HERE, "SVN-Retron 2000.ttf")
-AF = ("/system/fonts/Roboto-Regular.ttf", "/system/fonts/NotoSans-Regular.ttf", "/system/fonts/DroidSans.ttf")
+FONT_FILE = os.path.join(HERE, "S.ttf")
+AF = ("/system/fonts/Roboto-Regular.ttf", "/system/fonts/NotoSans-Regular.ttf", "/system/fonts/DroidSans.ttf",
+      "C:/Windows/Fonts/segoeui.ttf", "C:/Windows/Fonts/arial.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/System/Library/Fonts/Supplemental/Arial.ttf")
 def _sysfont(sz):
     p = next((p for p in AF if os.path.exists(p)), None)
     return pygame.font.Font(p, sz if p else sz + 4)
