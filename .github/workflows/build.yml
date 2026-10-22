@@ -1,0 +1,25 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v3
+
+      - name: Thiết lập môi trường Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        with:
+          command: buildozer android debug
+          buildozer_version: master
+
+      - name: Xuất file APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: Outdrive_199X_APK
+          path: bin/*.apk
