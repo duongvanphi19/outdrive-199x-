@@ -6,6 +6,34 @@ on:
   workflow_dispatch:
 
 jobs:
+  exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: '3.12' }
+      - shell: bash
+        run: |
+          pip install pygame pyinstaller pillow
+          python -c "from PIL import Image; Image.open('icon.png').save('icon.ico')"
+          pyinstaller --noconsole --name Outdrive199X --icon icon.ico --add-data "sfx;sfx" --add-data "*.ttf;." --add-data "*.png;." main.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Outdrive_199X_EXE
+          path: dist/Outdrive199X
+  web:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: '3.12' }
+      - run: |
+          pip install pygbag
+          python -m pygbag --build --archive .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Outdrive_199X_WEB
+          path: build/web.zip
   build:
     runs-on: ubuntu-22.04
     steps:
