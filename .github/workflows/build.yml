@@ -1,3 +1,4 @@
+
 name: Build APK
 
 on:
@@ -12,19 +13,19 @@ jobs:
       - name: Lấy mã nguồn
         uses: actions/checkout@v4
 
-      - name: Cài đặt Python
-        uses: actions/setup-python@v4
+      - name: Cài đặt Python (Nâng cấp v5 để xóa cảnh báo Node.js)
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Cài đặt thư viện hệ thống (Java, C, Buildozer)
+      - name: Cài đặt thư viện hệ thống (Ép Cython bản cũ để cứu Pygame)
         run: |
           sudo apt update
           sudo apt install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
           pip install --upgrade pip
-          pip install buildozer cython virtualenv
+          pip install "Cython==0.29.33" buildozer virtualenv
 
-      - name: Tiến hành Build APK
+      - name: Tiến hành Build APK (Triệt tiêu NDK mặc định của GitHub)
         run: |
           unset ANDROID_NDK_HOME
           unset ANDROID_NDK_ROOT
