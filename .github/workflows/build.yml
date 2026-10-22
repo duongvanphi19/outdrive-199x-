@@ -1,6 +1,4 @@
-
 name: Build APK
-
 on:
   push:
     branches: [ main ]
@@ -10,29 +8,28 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Lấy mã nguồn
-        uses: actions/checkout@v4
-
-      - name: Cài đặt Python (Nâng cấp v5 để xóa cảnh báo Node.js)
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.10'
 
-      - name: Cài đặt thư viện hệ thống (Ép Cython bản cũ để cứu Pygame)
+      - name: Cài thư viện
         run: |
-          sudo apt update
-          sudo apt install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
-          pip install --upgrade pip
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
           pip install "Cython==0.29.33" buildozer virtualenv
 
-      - name: Tiến hành Build APK (Triệt tiêu NDK mặc định của GitHub)
-        run: |
-          unset ANDROID_NDK_HOME
-          unset ANDROID_NDK_ROOT
-          yes | buildozer android debug
+      - uses: actions/cache@v4
+        with:
+          path: ~/.buildozer
+          key: bz-${{ hashFiles('buildozer.spec') }}
 
-      - name: Xuất file APK
-        uses: actions/upload-artifact@v4
+      - name: Build APK
+        run: |
+          unset ANDROID_NDK_HOME ANDROID_NDK_ROOT
+          buildozer android debug
+
+      - uses: actions/upload-artifact@v4
         with:
           name: Outdrive_199X_APK
           path: bin/*.apk
